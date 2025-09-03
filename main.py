@@ -41,23 +41,65 @@ class MockOpenAI:
         last_message = messages[-1].get('content', '') if messages else ''
         
         if 'quotation' in last_message.lower():
-            return """Subject: Quotation - Streetlight Poles
+            # Parse the actual quotation data from the prompt
+            try:
+                # Extract currency and items from the prompt
+                import re
+                
+                # Find currency
+                currency_match = re.search(r'Currency: (\w+)', last_message)
+                currency = currency_match.group(1) if currency_match else "SAR"
+                
+                # Find items
+                items_match = re.search(r'Items: \[(.*?)\]', last_message)
+                if items_match:
+                    items_text = items_match.group(1)
+                    # Parse items like "ALR-SL-90W: 100 pcs × SAR 288.00 = SAR 28,800.00"
+                    items = []
+                    for item in items_text.split(', '):
+                        if ':' in item and 'pcs' in item:
+                            parts = item.split(': ')
+                            sku = parts[0]
+                            details = parts[1]
+                            # Extract quantity, unit price, and line total
+                            qty_match = re.search(r'(\d+) pcs', details)
+                            price_match = re.search(rf'{currency} ([\d.]+)', details)
+                            total_match = re.search(rf'= {currency} ([\d,]+)', details)
+                            
+                            if qty_match and price_match and total_match:
+                                qty = qty_match.group(1)
+                                price = price_match.group(1)
+                                total = total_match.group(1).replace(',', '')
+                                items.append(f"- {sku}: {qty} pcs × {currency} {price} = {currency} {total}")
+                
+                # Find total amount
+                total_match = re.search(rf'Total: {currency} ([\d.]+)', last_message)
+                total_amount = total_match.group(1) if total_match else "0.00"
+                
+                # Find delivery terms
+                delivery_match = re.search(r'Delivery Terms: (.+?)(?:\n|$)', last_message)
+                delivery_terms = delivery_match.group(1) if delivery_match else "Standard delivery"
+                
+                # Find notes
+                notes_match = re.search(r'Notes: (.+?)(?:\n|$)', last_message)
+                notes = notes_match.group(1) if notes_match else "None"
+                
+                # Generate dynamic email
+                email_content = f"""Subject: Quotation - Streetlight Poles
 
-Dear Eng. Omar,
+Dear Valued Customer,
 
-Thank you for your inquiry regarding streetlight poles. Please find our quotation below:
+Thank you for your inquiry regarding our lighting products. Please find our quotation below:
 
 **Quotation Summary:**
-- ALR-SL-90W: 120 pcs × SAR 292.80 = SAR 35,136.00
-- ALR-OBL-12V: 40 pcs × SAR 112.69 = SAR 4,507.60
+{chr(10).join(items) if items else "- No items specified"}
 
-**Total Amount: SAR 39,643.60**
+**Total Amount: {currency} {total_amount}**
 
-**Delivery Terms:** DAP Dammam, 4 weeks
+**Delivery Terms:** {delivery_terms}
 **Payment Terms:** 30% advance, 70% before shipment
 
-**Specification Compliance:** 
-We confirm compliance with Tarsheed standards for all specified products.
+**Additional Notes:** {notes}
 
 Please let us know if you need any clarification or have questions.
 
@@ -65,6 +107,12 @@ Best regards,
 Alrouf Lighting Technology Team
 +966 11 123 4567
 info@alrouf.com"""
+                
+                return email_content
+                
+            except Exception as e:
+                # Fallback to generic response if parsing fails
+                return f"Mock quotation email generated. Error parsing details: {str(e)}"
 
         return "Mock response generated for local development."
 
