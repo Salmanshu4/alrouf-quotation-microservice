@@ -46,6 +46,10 @@ class MockOpenAI:
                 # Extract currency and items from the prompt
                 import re
                 
+                # Find language preference - look for the language in the prompt
+                lang_match = re.search(r'Generate a professional quotation email in (\w+) language', last_message, re.IGNORECASE)
+                language = lang_match.group(1).lower() if lang_match else "en"
+                
                 # Find currency
                 currency_match = re.search(r'Currency: (\w+)', last_message)
                 currency = currency_match.group(1) if currency_match else "SAR"
@@ -84,8 +88,34 @@ class MockOpenAI:
                 notes_match = re.search(r'Notes: (.+?)(?:\n|$)', last_message)
                 notes = notes_match.group(1) if notes_match else "None"
                 
-                # Generate dynamic email
-                email_content = f"""Subject: Quotation - Streetlight Poles
+                # Generate dynamic email based on language
+                if language == "ar":
+                    # Arabic email template
+                    email_content = f"""الموضوع: عرض سعر - أعمدة الإنارة
+
+عزيزي العميل المحترم،
+
+شكراً لاستفساركم حول منتجات الإنارة لدينا. يرجى الاطلاع على عرض السعر أدناه:
+
+**ملخص العرض:**
+{chr(10).join(items) if items else "- لم يتم تحديد منتجات"}
+
+**المبلغ الإجمالي: {currency} {total_amount}**
+
+**شروط التسليم:** {delivery_terms}
+**شروط الدفع:** 30% مقدم، 70% قبل الشحن
+
+**ملاحظات إضافية:** {notes}
+
+يرجى إخبارنا إذا كنت بحاجة إلى أي توضيح أو لديك أسئلة.
+
+مع أطيب التحيات،
+فريق تقنية الإنارة الأروق
++966 11 123 4567
+info@alrouf.com"""
+                else:
+                    # English email template
+                    email_content = f"""Subject: Quotation - Streetlight Poles
 
 Dear Valued Customer,
 
